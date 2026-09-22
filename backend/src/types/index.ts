@@ -55,6 +55,8 @@ export interface ServiceRecord {
   recorded_at?: Date;
   created_at?: Date;
   updated_at?: Date;
+  batch_id?: string;
+  line_no?: number;
 }
 
 export interface Volunteer {
@@ -161,6 +163,91 @@ export interface CreateServiceRecordResult {
   creditScore: number;
   creditChange: number;
   creditBreakdown?: CreditCalculationBreakdown;
+}
+
+export type ServiceRecordBatchStatus = 'processing' | 'completed' | 'rejected';
+
+export interface ServiceRecordBatch {
+  id: string;
+  batch_no: string;
+  status: ServiceRecordBatchStatus;
+  total_count: number;
+  success_count: number;
+  fail_count: number;
+  errors?: BatchLineError[];
+  result_snapshot?: BatchResultSnapshot | null;
+  created_by?: string;
+  created_at: Date;
+  processed_at?: Date | null;
+}
+
+export interface BatchLineError {
+  line: number;
+  code: string;
+  message: string;
+}
+
+export interface BatchVolunteerResult {
+  volunteer_id: string;
+  pointsChange: number;
+  newTotalPoints: number;
+  oldLevel: number;
+  newLevel: number;
+  levelUp: boolean;
+  newBadges: any[];
+  creditScore: number;
+  creditChange: number;
+  creditBreakdown?: CreditCalculationBreakdown;
+  recordCount: number;
+}
+
+export interface BatchResultSnapshot {
+  batch_id: string;
+  batch_no: string;
+  status: ServiceRecordBatchStatus;
+  total: number;
+  successCount: number;
+  failCount: number;
+  recordIds: string[];
+  volunteerResults: BatchVolunteerResult[];
+}
+
+export interface BatchImportData extends BatchResultSnapshot {
+  replayed: boolean;
+  created_at?: Date;
+  processed_at?: Date | null;
+}
+
+export interface BatchRejectData {
+  batch_id: string;
+  batch_no: string;
+  status: 'rejected';
+  total: number;
+  successCount: 0;
+  failCount: number;
+  errors: BatchLineError[];
+  replayed: boolean;
+}
+
+export interface BatchDetailsData {
+  batch: {
+    batch_id: string;
+    batch_no: string;
+    status: ServiceRecordBatchStatus;
+    total_count: number;
+    success_count: number;
+    fail_count: number;
+    errors: BatchLineError[];
+    created_at: Date;
+    processed_at?: Date | null;
+  };
+  records: ServiceRecord[];
+  pagination: {
+    page: number;
+    page_size: number;
+    total: number;
+    total_pages: number;
+  };
 }
 
 export interface ComplaintWithCredit extends Complaint {

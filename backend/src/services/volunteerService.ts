@@ -142,35 +142,6 @@ export const createServiceRecord = async (record: ServiceRecord): Promise<ApiRes
   }
 };
 
-export const batchCreateServiceRecords = async (
-  records: ServiceRecord[]
-): Promise<ApiResponse<any>> => {
-  const results: any[] = [];
-  let successCount = 0;
-  let failCount = 0;
-
-  for (const record of records) {
-    const result = await createServiceRecord(record);
-    if (result.success) {
-      successCount++;
-      results.push(result.data);
-    } else {
-      failCount++;
-      results.push({ error: result.error, record });
-    }
-  }
-
-  return {
-    success: true,
-    data: {
-      total: records.length,
-      successCount,
-      failCount,
-      results,
-    },
-  };
-};
-
 export const getVolunteerServiceRecords = async (
   volunteerId: string,
   page: number = 1,

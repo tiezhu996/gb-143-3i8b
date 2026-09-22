@@ -24,8 +24,49 @@ docker compose down -v --remove-orphans
 ## 主要功能
 
 - 志愿者档案与服务记录
+- 服务记录批次整批导入（批次号幂等、整批审查、统一入账、结果/明细回读）
 - 积分、徽章和信用分计算
 - 投诉处理、后台调整和排行榜
+
+## 批次导入接口（整批审查后再落账）
+
+所有接口需要认证头：`Authorization: Bearer <ADMIN_TOKEN 或 volunteer_<志愿者ID>>`。
+
+### 提交批次
+
+`POST /api/v1/service-records/batch`
+
+```json
+{
+  "batch_no": "20260922-001",
+  "records": [
+    {
+      "volunteer_id": "uuid",
+      "service_type": "elderly_care",
+      "duration_hours": 2,
+      "rating": 5,
+      "location": "敬老院",
+      "recorded_at": "2026-09-22T09:00:00Z"
+    }
+  ]
+}
+```
+
+审查规则（任一不满足，整批拒绝，记录/积分/等级/徽章/信用均不写入，返回全部问题行号）：
+
+- 志愿者必须存在且 `is_active = true`
+- `recorded_at` 不能晚于当前时间（缺省取当前时间）
+- 批次号不可重复；重复提交幂等返回首次的同一套结果（`replayed: true`）
+- 同一志愿者在相同记录时间、类型、时长、地点下，批内或与已入账记录重复均拒绝
+
+审查通过后在一个数据库事务内统一入账：写入全部记录、按志愿者结算积分/等级/徽章并重算信用分。
+并发提交相同 `batch_no` 通过事务级咨询锁串行化，只生成一套结果。成功返回 `200`；整批校验失败返回 `400`，
+`data.errors` 中包含每条问题的 `line`（从 1 开始）、`code`、`message`。
+
+### 回读
+
+- `GET /api/v1/service-records/batch/:batchNo` — 批次结果（状态、计数、错误、快照）
+- `GET /api/v1/service-records/batch/:batchNo/details?page=1&page_size=20` — 批次入账明细（按行号排序）
 
 ## 本地开发
 

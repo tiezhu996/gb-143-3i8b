@@ -51,6 +51,45 @@ const createTables = async (): Promise<void> => {
     `);
 
     await client.query(`
+      ALTER TABLE service_records ADD COLUMN IF NOT EXISTS batch_id UUID;
+      ALTER TABLE service_records ADD COLUMN IF NOT EXISTS line_no INTEGER;
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS service_record_batches (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        batch_no VARCHAR(64) NOT NULL UNIQUE,
+        status VARCHAR(20) NOT NULL CHECK (status IN ('processing', 'completed', 'rejected')),
+        total_count INTEGER NOT NULL DEFAULT 0,
+        success_count INTEGER NOT NULL DEFAULT 0,
+        fail_count INTEGER NOT NULL DEFAULT 0,
+        errors JSONB,
+        result_snapshot JSONB,
+        created_by VARCHAR(100),
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        processed_at TIMESTAMP
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_service_record_batches_status ON service_record_batches(status);
+      CREATE INDEX IF NOT EXISTS idx_service_record_batches_created_at ON service_record_batches(created_at DESC);
+    `);
+
+    await client.query(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_constraint WHERE conname = 'service_records_batch_id_fkey'
+        ) THEN
+          ALTER TABLE service_records
+            ADD CONSTRAINT service_records_batch_id_fkey
+            FOREIGN KEY (batch_id) REFERENCES service_record_batches(id) ON DELETE CASCADE;
+        END IF;
+      END $$;
+
+      CREATE INDEX IF NOT EXISTS idx_service_records_batch_id ON service_records(batch_id);
+    `);
+
+    await client.query(`
       CREATE TABLE IF NOT EXISTS badges (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         volunteer_id UUID NOT NULL REFERENCES volunteers(id) ON DELETE CASCADE,

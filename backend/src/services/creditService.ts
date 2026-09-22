@@ -1,5 +1,5 @@
 import { Volunteer, ServiceRecord, Complaint, CreditLog, CreditScoreResult } from '../types';
-import pool from '../db/pool';
+import pool, { DbExecutor, DbClient } from '../db/pool';
 
 const MIN_CREDIT_SCORE = 0;
 const MAX_CREDIT_SCORE = 120;
@@ -31,9 +31,11 @@ export const calculateCreditScore = (
 };
 
 export const recalculateCreditScore = async (
-  volunteerId: string
+  volunteerId: string,
+  executor: DbExecutor = pool
 ): Promise<CreditScoreResult | null> => {
-  const client = await pool.connect();
+  const ownsConnection = executor === pool;
+  const client: DbExecutor = ownsConnection ? await pool.connect() : executor;
 
   try {
     const volunteerResult = await client.query(
@@ -114,7 +116,9 @@ export const recalculateCreditScore = async (
 
     return { beforeScore, afterScore, changeAmount, breakdown };
   } finally {
-    client.release();
+    if (ownsConnection) {
+      (client as DbClient).release();
+    }
   }
 };
 
@@ -129,9 +133,11 @@ export const logCreditChange = async (
   beforeScore: number,
   afterScore: number,
   relatedId?: string,
-  relatedType?: string
+  relatedType?: string,
+  executor: DbExecutor = pool
 ): Promise<void> => {
-  const client = await pool.connect();
+  const ownsConnection = executor === pool;
+  const client: DbExecutor = ownsConnection ? await pool.connect() : executor;
   try {
     await client.query(
       `INSERT INTO credit_logs (volunteer_id, change_amount, reason, before_score, after_score, related_id, related_type)
@@ -139,7 +145,9 @@ export const logCreditChange = async (
       [volunteerId, changeAmount, reason, beforeScore, afterScore, relatedId, relatedType]
     );
   } finally {
-    client.release();
+    if (ownsConnection) {
+      (client as DbClient).release();
+    }
   }
 };
 

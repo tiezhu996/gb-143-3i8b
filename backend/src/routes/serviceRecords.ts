@@ -3,11 +3,15 @@ import { validateRequest, validateQuery, serviceRecordSchema, batchServiceRecord
 import { AuthRequest } from '../middleware/auth';
 import {
   createServiceRecord,
-  batchCreateServiceRecords,
   getVolunteerServiceRecords,
   getServiceRecordById,
   deleteServiceRecord,
 } from '../services/volunteerService';
+import {
+  importServiceRecordBatch,
+  getServiceRecordBatch,
+  getServiceRecordBatchDetails,
+} from '../services/batchService';
 import { sendInternalError } from '../utils/httpResponses';
 
 const router = Router();
@@ -22,22 +26,35 @@ router.post('/', validateRequest(serviceRecordSchema), async (req: Request, res:
   }
 });
 
-router.post('/batch', validateRequest(batchServiceRecordsSchema), async (req: Request, res: Response) => {
+router.post('/batch', validateRequest(batchServiceRecordsSchema), async (req: AuthRequest, res: Response) => {
   try {
-    const result = await batchCreateServiceRecords(req.body.records);
-    res.status(200).json(result);
+    const createdBy = req.user?.id || 'anonymous';
+    const result = await importServiceRecordBatch(req.body.batch_no, req.body.records, createdBy);
+    res.status(result.status).json(result.body);
   } catch (error) {
-    sendInternalError(res, error, 'Error batch creating service records');
+    sendInternalError(res, error, 'Error batch importing service records');
   }
 });
 
-router.get('/:id', async (req: Request, res: Response) => {
+router.get('/batch/:batchNo', async (req: Request, res: Response) => {
   try {
-    const result = await getServiceRecordById(req.params.id);
+    const result = await getServiceRecordBatch(req.params.batchNo);
     const statusCode = result.success ? 200 : 404;
     res.status(statusCode).json(result);
   } catch (error) {
-    sendInternalError(res, error, 'Error getting service record');
+    sendInternalError(res, error, 'Error getting service record batch');
+  }
+});
+
+router.get('/batch/:batchNo/details', validateQuery(paginationSchema), async (req: Request, res: Response) => {
+  try {
+    const page = parseInt(req.query.page as string) || 1;
+    const pageSize = parseInt(req.query.page_size as string) || 20;
+    const result = await getServiceRecordBatchDetails(req.params.batchNo, page, pageSize);
+    const statusCode = result.success ? 200 : 404;
+    res.status(statusCode).json(result);
+  } catch (error) {
+    sendInternalError(res, error, 'Error getting service record batch details');
   }
 });
 
@@ -49,6 +66,16 @@ router.get('/volunteer/:volunteerId', validateQuery(paginationSchema), async (re
     res.status(200).json(result);
   } catch (error) {
     sendInternalError(res, error, 'Error getting volunteer service records');
+  }
+});
+
+router.get('/:id', async (req: Request, res: Response) => {
+  try {
+    const result = await getServiceRecordById(req.params.id);
+    const statusCode = result.success ? 200 : 404;
+    res.status(statusCode).json(result);
+  } catch (error) {
+    sendInternalError(res, error, 'Error getting service record');
   }
 });
 

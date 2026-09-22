@@ -54,8 +54,59 @@ export const serviceRecordSchema = Joi.object({
 });
 
 export const batchServiceRecordsSchema = Joi.object({
-  records: Joi.array().items(serviceRecordSchema).min(1).required(),
+  batch_no: Joi.string().pattern(/^[A-Za-z0-9_-]{1,64}$/).required()
+    .messages({
+      'any.required': messages.validation.batchNoRequired,
+      'string.empty': messages.validation.batchNoRequired,
+      'string.pattern.base': messages.validation.batchNoInvalid,
+    }),
+  records: Joi.array().min(1).max(500).required()
+    .messages({
+      'any.required': messages.validation.batchRecordsRequired,
+      'array.base': messages.validation.batchRecordsRequired,
+      'array.min': messages.validation.batchRecordsEmpty,
+      'array.max': messages.validation.batchRecordsTooMany,
+    }),
 });
+
+export const batchItemSchema = Joi.object({
+  volunteer_id: Joi.string().uuid().required()
+    .messages({
+      'any.required': messages.batchLineErrors.volunteerRequired,
+      'string.empty': messages.batchLineErrors.volunteerRequired,
+      'string.guid': messages.batchLineErrors.invalidVolunteerId,
+    }),
+  service_type: Joi.string().valid(
+    'elderly_care', 'child_care', 'medical_assist', 'education',
+    'community_service', 'disaster_relief', 'environmental',
+    'cultural_activity', 'other'
+  ).required()
+    .messages({
+      'any.required': messages.batchLineErrors.serviceTypeRequired,
+      'string.empty': messages.batchLineErrors.serviceTypeRequired,
+      'any.only': messages.batchLineErrors.invalidServiceType,
+    }),
+  duration_hours: Joi.number().positive().required()
+    .messages({
+      'any.required': messages.batchLineErrors.durationRequired,
+      'number.base': messages.batchLineErrors.invalidDuration,
+      'number.positive': messages.batchLineErrors.invalidDuration,
+    }),
+  rating: Joi.number().integer().min(1).max(5).default(5)
+    .messages({
+      'number.base': messages.batchLineErrors.invalidRating,
+      'number.integer': messages.batchLineErrors.invalidRating,
+      'number.min': messages.batchLineErrors.invalidRating,
+      'number.max': messages.batchLineErrors.invalidRating,
+    }),
+  is_no_show: Joi.boolean().default(false)
+    .messages({ 'boolean.base': messages.batchLineErrors.invalidIsNoShow }),
+  location: Joi.string().max(200).allow(null).optional()
+    .messages({ 'string.max': messages.batchLineErrors.invalidLocation }),
+  description: Joi.string().allow(null).optional(),
+  recorded_at: Joi.date().iso().optional()
+    .messages({ 'date.base': messages.batchLineErrors.invalidRecordedAt }),
+}).options({ stripUnknown: false, messages: { 'object.unknown': '不允许的字段: {#label}' } });
 
 export const volunteerCreateSchema = Joi.object({
   name: Joi.string().min(2).max(100).required(),

@@ -1,7 +1,14 @@
-import { Pool } from 'pg';
+import { Pool, PoolClient, QueryResult, QueryResultRow } from 'pg';
 import { env } from '../config/env';
 import { messages } from '../constants/messages';
 import { logger } from '../utils/logger';
+
+export interface DbExecutor {
+  query<R extends QueryResultRow = QueryResultRow>(
+    text: string,
+    params?: readonly unknown[]
+  ): Promise<QueryResult<R>>;
+}
 
 const pool = new Pool({
   host: env.database.host,
@@ -17,5 +24,7 @@ const pool = new Pool({
 pool.on('error', (err) => {
   logger.error(messages.errors.idleClient, err);
 });
+
+export type DbClient = PoolClient;
 
 export default pool;

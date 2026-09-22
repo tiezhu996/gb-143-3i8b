@@ -1,5 +1,5 @@
 import { LEVEL_THRESHOLDS, BADGE_NAMES, BADGE_DESCRIPTIONS, Badge } from '../types';
-import pool from '../db/pool';
+import pool, { DbExecutor } from '../db/pool';
 
 export const calculateLevel = (totalPoints: number): number => {
   let currentLevel = 1;
@@ -15,7 +15,8 @@ export const calculateLevel = (totalPoints: number): number => {
 export const checkNewBadges = async (
   volunteerId: string,
   newLevel: number,
-  currentBadges: Badge[]
+  currentBadges: Badge[],
+  executor: DbExecutor = pool
 ): Promise<Badge[]> => {
   const newBadges: Badge[] = [];
   const currentLevels = currentBadges.map(b => b.star_level);
@@ -25,18 +26,13 @@ export const checkNewBadges = async (
       const badgeName = BADGE_NAMES[level];
       const description = BADGE_DESCRIPTIONS[level];
 
-      const client = await pool.connect();
-      try {
-        const result = await client.query(
-          `INSERT INTO badges (volunteer_id, star_level, badge_name, description)
-           VALUES ($1, $2, $3, $4)
-           RETURNING *`,
-          [volunteerId, level, badgeName, description]
-        );
-        newBadges.push(result.rows[0]);
-      } finally {
-        client.release();
-      }
+      const result = await executor.query(
+        `INSERT INTO badges (volunteer_id, star_level, badge_name, description)
+         VALUES ($1, $2, $3, $4)
+         RETURNING *`,
+        [volunteerId, level, badgeName, description]
+      );
+      newBadges.push(result.rows[0] as Badge);
     }
   }
 
