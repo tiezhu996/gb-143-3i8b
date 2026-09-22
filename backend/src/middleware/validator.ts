@@ -48,13 +48,29 @@ export const serviceRecordSchema = Joi.object({
   duration_hours: Joi.number().positive().required(),
   rating: Joi.number().integer().min(1).max(5).default(5),
   is_no_show: Joi.boolean().default(false),
-  location: Joi.string().optional(),
-  description: Joi.string().optional(),
+  location: Joi.string().allow('', null).optional(),
+  description: Joi.string().allow('', null).optional(),
   recorded_at: Joi.date().optional(),
 });
 
+export const batchRecordSchema = Joi.object({
+  volunteer_id: Joi.string().uuid().required(),
+  service_type: Joi.string().valid(
+    'elderly_care', 'child_care', 'medical_assist', 'education',
+    'community_service', 'disaster_relief', 'environmental',
+    'cultural_activity', 'other'
+  ).required(),
+  duration_hours: Joi.number().positive().required(),
+  rating: Joi.number().integer().min(1).max(5).default(5),
+  is_no_show: Joi.boolean().default(false),
+  location: Joi.string().allow('', null).optional(),
+  description: Joi.string().allow('', null).optional(),
+  recorded_at: Joi.date().required(),
+});
+
 export const batchServiceRecordsSchema = Joi.object({
-  records: Joi.array().items(serviceRecordSchema).min(1).required(),
+  batch_no: Joi.string().trim().min(1).max(64).required(),
+  records: Joi.array().items(batchRecordSchema).min(1).max(1000).required(),
 });
 
 export const volunteerCreateSchema = Joi.object({

@@ -40,6 +40,7 @@ const createTables = async (): Promise<void> => {
         is_no_show BOOLEAN NOT NULL DEFAULT false,
         location VARCHAR(200),
         description TEXT,
+        batch_no VARCHAR(64),
         recorded_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -48,6 +49,68 @@ const createTables = async (): Promise<void> => {
       CREATE INDEX IF NOT EXISTS idx_service_records_volunteer_id ON service_records(volunteer_id);
       CREATE INDEX IF NOT EXISTS idx_service_records_recorded_at ON service_records(recorded_at DESC);
       CREATE INDEX IF NOT EXISTS idx_service_records_service_type ON service_records(service_type);
+    `);
+
+    // 旧库升级：先补齐 batch_no 列，再创建依赖该列的索引
+    await client.query(`
+      ALTER TABLE service_records ADD COLUMN IF NOT EXISTS batch_no VARCHAR(64);
+
+      CREATE INDEX IF NOT EXISTS idx_service_records_batch_no ON service_records(batch_no);
+
+      CREATE UNIQUE INDEX IF NOT EXISTS uq_service_records_dedup
+        ON service_records (
+          volunteer_id,
+          date_trunc('second', recorded_at),
+          service_type,
+          duration_hours,
+          COALESCE(location, '')
+        );
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS batch_imports (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        batch_no VARCHAR(64) NOT NULL UNIQUE,
+        status VARCHAR(20) NOT NULL DEFAULT 'processing'
+          CHECK (status IN ('processing', 'completed', 'rejected')),
+        total_count INTEGER NOT NULL DEFAULT 0,
+        success_count INTEGER NOT NULL DEFAULT 0,
+        rejected_count INTEGER NOT NULL DEFAULT 0,
+        request_payload_hash VARCHAR(128),
+        result_summary JSONB,
+        error_summary JSONB,
+        created_by VARCHAR(100) NOT NULL DEFAULT 'anonymous',
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        processed_at TIMESTAMP
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_batch_imports_status ON batch_imports(status);
+      CREATE INDEX IF NOT EXISTS idx_batch_imports_created_at ON batch_imports(created_at DESC);
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS batch_import_items (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        batch_id UUID NOT NULL REFERENCES batch_imports(id) ON DELETE CASCADE,
+        line_number INTEGER NOT NULL,
+        service_record_id UUID REFERENCES service_records(id) ON DELETE SET NULL,
+        volunteer_id UUID NOT NULL,
+        service_type VARCHAR(50) NOT NULL,
+        duration_hours DECIMAL(6,2) NOT NULL,
+        rating INTEGER NOT NULL,
+        is_no_show BOOLEAN NOT NULL DEFAULT false,
+        location VARCHAR(200),
+        description TEXT,
+        recorded_at TIMESTAMP NOT NULL,
+        points_earned INTEGER,
+        status VARCHAR(20) NOT NULL CHECK (status IN ('accepted', 'rejected')),
+        error_codes JSONB,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(batch_id, line_number)
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_batch_import_items_batch_id ON batch_import_items(batch_id);
+      CREATE INDEX IF NOT EXISTS idx_batch_import_items_volunteer_id ON batch_import_items(volunteer_id);
     `);
 
     await client.query(`

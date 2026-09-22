@@ -43,6 +43,17 @@ export const messages = {
     serviceRecordDeleted: '记录已删除',
     serviceRecordDeleteFailed: '删除记录失败',
   },
+  batch: {
+    reviewFailed: '批次审查未通过，整批拒绝入账',
+    importFailed: '批次导入失败',
+    inProgress: '批次正在处理中，请稍后查询结果',
+    notFound: '批次不存在',
+    volunteerNotFound: '志愿者不存在',
+    volunteerInactive: '志愿者未启用',
+    futureRecordedAt: '记录时间不能晚于当前时间',
+    duplicateRecord: '同一志愿者在相同时间、类型、时长和地点的记录重复',
+    batchNoConflict: '批次号已被占用且提交内容不同',
+  },
   complaints: {
     notFound: '投诉不存在',
     alreadyHandled: '该投诉已处理',
@@ -59,6 +70,7 @@ export const messages = {
   logs: {
     createServiceRecordFailed: '创建服务记录失败',
     deleteServiceRecordFailed: '删除服务记录失败',
+    batchImportFailed: '批次导入失败',
     handleComplaintFailed: '处理投诉失败',
     adjustPointsFailed: '调整积分失败',
     adjustCreditFailed: '调整信用分失败',

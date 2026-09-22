@@ -53,8 +53,84 @@ export interface ServiceRecord {
   location?: string;
   description?: string;
   recorded_at?: Date;
+  batch_id?: string | null;
   created_at?: Date;
   updated_at?: Date;
+}
+
+export interface BatchServiceRecordItem {
+  volunteer_id: string;
+  service_type: string;
+  duration_hours: number;
+  rating: number;
+  is_no_show: boolean;
+  location?: string;
+  description?: string;
+  recorded_at: Date;
+}
+
+export type BatchImportStatus = 'processing' | 'completed' | 'rejected';
+
+export type BatchRowErrorCode =
+  | 'VOLUNTEER_NOT_FOUND'
+  | 'VOLUNTEER_INACTIVE'
+  | 'FUTURE_RECORDED_AT'
+  | 'DUPLICATE_RECORD';
+
+export interface BatchImportErrorRow {
+  line_number: number;
+  volunteer_id?: string;
+  error_codes: BatchRowErrorCode[];
+  messages: string[];
+  duplicate_of_line?: number;
+}
+
+export interface BatchImport {
+  id: string;
+  batch_no: string;
+  status: BatchImportStatus;
+  total_count: number;
+  success_count: number;
+  rejected_count: number;
+  request_payload_hash?: string | null;
+  result_summary: Record<string, unknown> | null;
+  error_summary: Record<string, unknown> | null;
+  created_by: string;
+  created_at: Date;
+  processed_at: Date | null;
+}
+
+export interface BatchImportItem {
+  id: string;
+  batch_id: string;
+  batch_no: string;
+  line_number: number;
+  service_record_id: string | null;
+  volunteer_id: string;
+  service_type: string;
+  duration_hours: number;
+  rating: number;
+  is_no_show: boolean;
+  location: string | null;
+  description: string | null;
+  recorded_at: Date;
+  points_earned: number | null;
+  status: 'accepted' | 'rejected';
+  error_codes: BatchRowErrorCode[] | null;
+  created_at: Date;
+}
+
+export interface BatchImportResultData {
+  batch_no: string;
+  status: BatchImportStatus;
+  total_count: number;
+  success_count: number;
+  rejected_count: number;
+  idempotent: boolean;
+  error_lines: number[];
+  error_rows: BatchImportErrorRow[];
+  volunteers: unknown;
+  items: unknown[];
 }
 
 export interface Volunteer {
@@ -175,6 +251,7 @@ export interface ApiResponse<T> {
   error?: string;
   message?: string;
   details?: any;
+  statusCode?: number;
 }
 
 export interface PaginatedData<T> {

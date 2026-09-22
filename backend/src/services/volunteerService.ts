@@ -133,42 +133,16 @@ export const createServiceRecord = async (record: ServiceRecord): Promise<ApiRes
         creditBreakdown: creditResult?.breakdown,
       },
     };
-  } catch (error) {
+  } catch (error: any) {
     await client.query('ROLLBACK');
+    if (error && error.code === '23505') {
+      return { success: false, error: messages.batch.duplicateRecord };
+    }
     logger.error(messages.logs.createServiceRecordFailed, error);
     return { success: false, error: messages.volunteers.serviceRecordCreateFailed };
   } finally {
     client.release();
   }
-};
-
-export const batchCreateServiceRecords = async (
-  records: ServiceRecord[]
-): Promise<ApiResponse<any>> => {
-  const results: any[] = [];
-  let successCount = 0;
-  let failCount = 0;
-
-  for (const record of records) {
-    const result = await createServiceRecord(record);
-    if (result.success) {
-      successCount++;
-      results.push(result.data);
-    } else {
-      failCount++;
-      results.push({ error: result.error, record });
-    }
-  }
-
-  return {
-    success: true,
-    data: {
-      total: records.length,
-      successCount,
-      failCount,
-      results,
-    },
-  };
 };
 
 export const getVolunteerServiceRecords = async (

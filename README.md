@@ -25,7 +25,14 @@ docker compose down -v --remove-orphans
 
 - 志愿者档案与服务记录
 - 积分、徽章和信用分计算
+- 服务记录批次批量导入（整批审查后统一入账，按批次号幂等）
 - 投诉处理、后台调整和排行榜
+
+### 批次批量导入
+
+- `POST /api/v1/service-records/batch`：请求体含 `batch_no` 与 `records`，系统先整批审查（志愿者存在且启用、记录时间不在未来、同志愿者同时间/类型/时长/地点不与批内或库内记录重复）。任一记录不合格即整批拒绝，返回全部问题行号，记录、积分、等级、徽章、信用均不写入；全部合格才在单事务内统一入账。
+- 同一 `batch_no` 并发或重复提交只会生成一套结果：内容相同返回既有结果（幂等），内容不同返回 409。
+- `GET /api/v1/service-records/batch/:batchNo` 回读批次结果与全部明细；`GET /api/v1/service-records/batch/:batchNo/items` 分页回读明细。
 
 ## 本地开发
 
